@@ -59,7 +59,7 @@ export GEMINI_MODEL="gemini-2.0-flash"  # Optional
 ### Option 2: Using Local LLM (e.g., LM Studio)
 
 ```bash
-export DATABASE_URL="postgres://user:password@localhost:5432/dbname?sslmode=disable"
+export DATABASE_URL="postgres://postgres:postgres@localhost:5432/purchase_orders?sslmode=disable"
 export LLM_PROVIDER="local"
 export LOCAL_LLM_URL="http://localhost:1234"
 export LLM_MODEL="local-model" # Optional
