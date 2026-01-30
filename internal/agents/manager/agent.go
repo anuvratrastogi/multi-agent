@@ -1,3 +1,4 @@
+// Package manager implements a Manager agent that orchestrates SQL and Chart agents.
 package manager
 
 import (

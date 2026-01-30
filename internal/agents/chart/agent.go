@@ -1,3 +1,4 @@
+// Package chart implements a Chart agent for data visualization using Mermaid charts.
 package chart
 
 import (
@@ -208,9 +209,4 @@ func roundUpNice(val float64) float64 {
 	}
 	// Round up to nearest 1000
 	return float64(int(val/1000)+1) * 1000
-}
-
-func toJSONString(v interface{}) string {
-	b, _ := json.Marshal(v)
-	return string(b)
 }
