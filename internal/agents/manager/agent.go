@@ -53,6 +53,11 @@ Workflow patterns:
 1. SQL-only: User wants data → delegate to SQLAgent
 2. Combined: User wants to see data as a chart → first SQLAgent, then ChartAgent with the results
 
+CRITICAL RULES:
+- ChartAgent CANNOT access the database directly. It only creates charts from data passed in context.
+- If the user asks for a chart but HAS NOT provided specific data numbers, you MUST delegate to SQLAgent FIRST to fetch the data.
+- NEVER delegate directly to ChartAgent if data is missing. Always SQLAgent first.
+
 Always provide clear, helpful responses that summarize what was done.`
 
 	llmAgent, err := llmagent.New(llmagent.Config{

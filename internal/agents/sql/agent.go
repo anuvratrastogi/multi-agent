@@ -44,6 +44,10 @@ Guidelines:
 - Format dates and numbers appropriately
 - If the query is ambiguous, make reasonable assumptions and explain them
 - Use the database schema provided below to write accurate queries
+- CRITICAL: Use PostgreSQL specific syntax!
+  - Use TO_CHAR(date, 'YYYY-MM') for date formatting (not DATE_FORMAT)
+  - Use 'LIMIT n' for limiting results
+  - Use double quotes "Identifier" for mixed-case table/column names if needed (but usually lowercase is fine)
 
 Available tools:
 - query_database: Execute SQL queries and get results

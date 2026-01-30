@@ -130,6 +130,9 @@ func (l *LocalLLM) GenerateContent(ctx context.Context, req *model.LLMRequest, s
 			return
 		}
 
+		// DEBUG: Print request JSON
+		fmt.Printf("\n🔎 [DEBUG] Sending to LLM:\n%s\n\n", string(reqBody))
+
 		httpReq, err := http.NewRequestWithContext(ctx, "POST", l.baseURL+"/v1/chat/completions", bytes.NewReader(reqBody))
 		if err != nil {
 			yield(nil, fmt.Errorf("failed to create request: %w", err))
@@ -229,17 +232,32 @@ func (l *LocalLLM) convertToMessages(req *model.LLMRequest) []chatMessage {
 
 		// Add text or function call message
 		if len(funcCalls) > 0 {
-			// This is an assistant message with function calls
+			// This is a new assistant message with function calls - never merge tool calls
 			messages = append(messages, chatMessage{
 				Role:      "assistant",
 				Content:   textContent,
 				ToolCalls: funcCalls,
 			})
 		} else if textContent != "" {
-			messages = append(messages, chatMessage{
-				Role:    role,
-				Content: textContent,
-			})
+			// Check if we can merge with previous message
+			merged := false
+			if len(messages) > 0 {
+				lastIdx := len(messages) - 1
+				lastMsg := &messages[lastIdx]
+
+				// Only merge if roles match and neither has tool calls/ids (simple text messages)
+				if lastMsg.Role == role && lastMsg.ToolCalls == nil && lastMsg.ToolCallID == "" {
+					lastMsg.Content += "\n" + textContent
+					merged = true
+				}
+			}
+
+			if !merged {
+				messages = append(messages, chatMessage{
+					Role:    role,
+					Content: textContent,
+				})
+			}
 		}
 
 		// Add function response messages (tool results)
@@ -252,7 +270,25 @@ func (l *LocalLLM) convertToMessages(req *model.LLMRequest) []chatMessage {
 		}
 	}
 
-	return messages
+	// Post-processing: specific fix for Mistral/LM Studio
+	// Ensure Tool messages are always followed by Assistant messages before the next User message
+	var finalMessages []chatMessage
+	for _, msg := range messages {
+		// If we are about to add a User message, and the previous one was a Tool message
+		if msg.Role == "user" && len(finalMessages) > 0 {
+			lastMsg := finalMessages[len(finalMessages)-1]
+			if lastMsg.Role == "tool" {
+				// Inject a neutral assistant message to satisfy alternation
+				finalMessages = append(finalMessages, chatMessage{
+					Role:    "assistant",
+					Content: "Action completed.",
+				})
+			}
+		}
+		finalMessages = append(finalMessages, msg)
+	}
+
+	return finalMessages
 }
 
 func (l *LocalLLM) convertToTools(req *model.LLMRequest) []toolDef {
@@ -273,7 +309,12 @@ func (l *LocalLLM) convertToTools(req *model.LLMRequest) []toolDef {
 			for _, fd := range t.FunctionDeclarations {
 				var params interface{} = emptyParams
 				if fd.Parameters != nil {
-					params = fd.Parameters
+					// Normalize the schema to ensure compatibility
+					params = normalizeSchema(fd.Parameters)
+
+					// DEBUG: Print parameter details
+					paramJSON, _ := json.Marshal(params)
+					fmt.Printf("🔎 [DEBUG] Tool %s normalized params: %s\n", fd.Name, string(paramJSON))
 				}
 				tools = append(tools, toolDef{
 					Type: "function",
@@ -288,6 +329,58 @@ func (l *LocalLLM) convertToTools(req *model.LLMRequest) []toolDef {
 	}
 
 	return tools
+}
+
+// normalizeSchema ensures the schema is in standard OpenAI JSON schema format
+// converting from potentially capitalized matching (genai) to lowercase
+func normalizeSchema(params interface{}) interface{} {
+	b, err := json.Marshal(params)
+	if err != nil {
+		return params
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return params
+	}
+
+	return fixSchemaMap(raw)
+}
+
+func fixSchemaMap(m map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{})
+	for k, v := range m {
+		// Lowercase the key
+		key := strings.ToLower(k)
+
+		// Handle value based on connection
+		switch val := v.(type) {
+		case string:
+			// Ensure types are lowercase
+			if key == "type" {
+				out[key] = strings.ToLower(val)
+			} else {
+				out[key] = val
+			}
+		case map[string]interface{}:
+			if key == "properties" {
+				newProps := make(map[string]interface{})
+				for pk, pv := range val {
+					if plot, ok := pv.(map[string]interface{}); ok {
+						newProps[pk] = fixSchemaMap(plot)
+					} else {
+						newProps[pk] = pv
+					}
+				}
+				out[key] = newProps
+			} else {
+				out[key] = fixSchemaMap(val)
+			}
+		default:
+			out[key] = val
+		}
+	}
+	return out
 }
 
 func (l *LocalLLM) convertToLLMResponse(chatResp *chatResponse) *model.LLMResponse {
