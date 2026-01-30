@@ -50,8 +50,7 @@ You have access to two sub-agents:
 
 Workflow patterns:
 1. SQL-only: User wants data → delegate to SQLAgent
-2. Visualization-only: User wants a chart from existing data → delegate to ChartAgent
-3. Combined: User wants to see data as a chart → first SQLAgent, then ChartAgent with the results
+2. Combined: User wants to see data as a chart → first SQLAgent, then ChartAgent with the results
 
 Always provide clear, helpful responses that summarize what was done.`
 
