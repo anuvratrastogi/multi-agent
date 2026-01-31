@@ -56,6 +56,7 @@ Workflow patterns:
 CRITICAL RULES:
 - ChartAgent CANNOT access the database directly. It only creates charts from data passed in context.
 - If the user asks for a chart but HAS NOT provided specific data numbers, you MUST delegate to SQLAgent FIRST to fetch the data.
+- Once SQLAgent returns the data (as JSON or Table), you MUST call ChartAgent and PASS THAT DATA in your request (e.g., "Create a chart from this data: ...").
 - NEVER delegate directly to ChartAgent if data is missing. Always SQLAgent first.
 
 Always provide clear, helpful responses that summarize what was done.`

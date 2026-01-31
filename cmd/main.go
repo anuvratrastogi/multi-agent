@@ -92,6 +92,16 @@ func main() {
 		log.Fatalf("Failed to create SQL tools: %v", err)
 	}
 
+	// Initialize Chart Agent
+	fmt.Println("📈 Initializing Chart Agent...")
+	chartAgent, err := chart.New(chart.Config{
+		Model: llm,
+	})
+	if err != nil {
+		log.Fatalf("Failed to create Chart agent: %v", err)
+	}
+	fmt.Println("✅ Chart Agent ready")
+
 	// Initialize SQL Agent with schema
 	fmt.Println("🔧 Initializing SQL Agent...")
 	sqlAgent, err := sqlagent.New(sqlagent.Config{
@@ -103,16 +113,6 @@ func main() {
 		log.Fatalf("Failed to create SQL agent: %v", err)
 	}
 	fmt.Println("✅ SQL Agent ready")
-
-	// Initialize Chart Agent
-	fmt.Println("📈 Initializing Chart Agent...")
-	chartAgent, err := chart.New(chart.Config{
-		Model: llm,
-	})
-	if err != nil {
-		log.Fatalf("Failed to create Chart agent: %v", err)
-	}
-	fmt.Println("✅ Chart Agent ready")
 
 	// Initialize Manager Agent
 	fmt.Println("👔 Initializing Manager Agent...")

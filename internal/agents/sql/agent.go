@@ -49,6 +49,12 @@ Guidelines:
   - Use 'LIMIT n' for limiting results
   - Use double quotes "Identifier" for mixed-case table/column names if needed (but usually lowercase is fine)
 
+Visualizations:
+- If the user explicitly requested a chart/visualization (e.g., "bar chart", "plot this"):
+  1. FIRST, execute the SQL query to get the data.
+  2. RETURN the data in your response.
+  3. DO NOT worry about creating the chart yourself. The Manager will handle it.
+
 Available tools:
 - query_database: Execute SQL queries and get results
 - get_schema: Get the schema of a specific table (if you need more details)

@@ -291,6 +291,62 @@ func (l *LocalLLM) convertToMessages(req *model.LLMRequest) []chatMessage {
 	return finalMessages
 }
 
+// knownToolSchemas provides fallback schemas for tools that don't have Parameters set.
+// This is needed because ADK's functiontool doesn't populate genai.FunctionDeclaration.Parameters
+// when converted for local LLM usage.
+var knownToolSchemas = map[string]map[string]interface{}{
+	"query_database": {
+		"type": "object",
+		"properties": map[string]interface{}{
+			"sql": map[string]interface{}{
+				"type":        "string",
+				"description": "The SQL query to execute",
+			},
+			"limit": map[string]interface{}{
+				"type":        "integer",
+				"description": "Maximum number of rows to return (default: 100)",
+			},
+		},
+		"required": []string{"sql"},
+	},
+	"get_schema": {
+		"type": "object",
+		"properties": map[string]interface{}{
+			"table_name": map[string]interface{}{
+				"type":        "string",
+				"description": "The name of the table to get schema for",
+			},
+		},
+		"required": []string{"table_name"},
+	},
+	"list_tables": {
+		"type":       "object",
+		"properties": map[string]interface{}{},
+	},
+	"describe_database": {
+		"type":       "object",
+		"properties": map[string]interface{}{},
+	},
+	"generate_chart": {
+		"type": "object",
+		"properties": map[string]interface{}{
+			"chart_type": map[string]interface{}{
+				"type":        "string",
+				"description": "Type of chart: bar, line, pie, scatter",
+			},
+			"title": map[string]interface{}{
+				"type":        "string",
+				"description": "Chart title",
+			},
+			"data": map[string]interface{}{
+				"type":        "string",
+				"description": "JSON string containing the chart data",
+			},
+		},
+		"required": []string{"chart_type", "title", "data"},
+	},
+}
+
 func (l *LocalLLM) convertToTools(req *model.LLMRequest) []toolDef {
 	var tools []toolDef
 
@@ -308,6 +364,7 @@ func (l *LocalLLM) convertToTools(req *model.LLMRequest) []toolDef {
 		if t.FunctionDeclarations != nil {
 			for _, fd := range t.FunctionDeclarations {
 				var params interface{} = emptyParams
+
 				if fd.Parameters != nil {
 					// Normalize the schema to ensure compatibility
 					params = normalizeSchema(fd.Parameters)
@@ -315,7 +372,15 @@ func (l *LocalLLM) convertToTools(req *model.LLMRequest) []toolDef {
 					// DEBUG: Print parameter details
 					paramJSON, _ := json.Marshal(params)
 					fmt.Printf("🔎 [DEBUG] Tool %s normalized params: %s\n", fd.Name, string(paramJSON))
+				} else if schema, ok := knownToolSchemas[fd.Name]; ok {
+					// Use fallback schema for known tools
+					params = schema
+
+					// DEBUG: Print fallback
+					paramJSON, _ := json.Marshal(params)
+					fmt.Printf("🔎 [DEBUG] Tool %s using fallback schema: %s\n", fd.Name, string(paramJSON))
 				}
+
 				tools = append(tools, toolDef{
 					Type: "function",
 					Function: functionDef{
