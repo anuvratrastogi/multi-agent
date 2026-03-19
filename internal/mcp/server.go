@@ -104,9 +104,7 @@ func (ps *PostgresServer) handleQuery(ctx context.Context, request mcp.CallToolR
 	if strings.HasPrefix(queryUpper, "SELECT") && !strings.Contains(queryUpper, "LIMIT") {
 		// Strip trailing semicolon if present
 		query = strings.TrimSpace(query)
-		if strings.HasSuffix(query, ";") {
-			query = query[:len(query)-1]
-		}
+		query = strings.TrimSuffix(query, ";")
 		query = fmt.Sprintf("%s LIMIT %d", query, int(limit))
 	}
 
